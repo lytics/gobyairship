@@ -29,7 +29,7 @@ const (
 	StartLast  = "LATEST"
 )
 
-type request struct {
+type Request struct {
 	Start   Start     `json:"start"`
 	Offset  uint64    `json:"resume_offset"`
 	Filters []*Filter `json:"filters,omitempty"`
@@ -38,7 +38,7 @@ type request struct {
 // Fetch events using Client. Filters may be nil to fetch all events. If error
 // is non-nil Response will stream events until Close is called.
 func Fetch(c Client, s Start, offset uint64, filters []*Filter) (*Response, error) {
-	req := &request{Start: s, Offset: offset, Filters: filters}
+	req := &Request{Start: s, Offset: offset, Filters: filters}
 	resp, err := c.Post("events", req)
 	if err != nil {
 		return nil, err

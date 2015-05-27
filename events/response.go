@@ -161,8 +161,12 @@ func (e *Event) TagChange() (*TagChange, error) {
 
 // Location events include the latitude and longitude of the device.
 type Location struct {
-	Lat float64 `json:"latitude"`
-	Lon float64 `json:"longitude"`
+	Lat json.Number `json:"latitude"`
+	Lon json.Number `json:"longitude"`
+
+	// Foreground indicates whether the application was foregrounded when the
+	// event fired.
+	Foreground bool `json:"foreground"`
 }
 
 func (e *Event) Location() (*Location, error) {
@@ -200,7 +204,6 @@ func newResponse(resp *http.Response) (*Response, error) {
 		for {
 			var ev Event
 			if err := dec.Decode(&ev); err != nil {
-				// Expose all non-EOF errors to caller
 				r.mu.Lock()
 				defer r.mu.Unlock()
 				r.err = err
