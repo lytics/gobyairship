@@ -57,11 +57,13 @@ var filterTypes = map[string]events.Type{
 	"send":       events.TypeSend,
 	"tag_change": events.TypeTagChange,
 	"uninstall":  events.TypeUninstall,
+	"push_body":  events.TypePush,
 }
 
 func TestFilterTypes(t *testing.T) {
 	t.Parallel()
 	for fname, ftype := range filterTypes {
+		t.Log("Testing", fname)
 		fn := fmt.Sprintf("%s/%s.json", os.ExpandEnv(testDataPath), fname)
 		f, err := os.Open(fn)
 		if err != nil {
@@ -97,7 +99,8 @@ func checkEvent(ft events.Type, ev *events.Event) (errmsg string) {
 	if ev.ID == "" {
 		return "Missing ID"
 	}
-	if ev.Type != ft {
+	// ft == "" means ev may be of /any/ type
+	if ft != "" && ev.Type != ft {
 		return fmt.Sprintf("Expected type %s but found %s", ft, ev.Type)
 	}
 	if ev.Occurred.IsZero() || ev.Occurred.After(time.Now()) {
@@ -109,9 +112,15 @@ func checkEvent(ft events.Type, ev *events.Event) (errmsg string) {
 	if ev.Occurred.After(ev.Processed) {
 		return fmt.Sprintf("Occurred after Processed?! %s > %s", ev.Occurred, ev.Processed)
 	}
-	switch ft {
+
+	if ev.Device != nil {
+		if len(ev.Device.Amazon)+len(ev.Device.Android)+len(ev.Device.IOS)+len(ev.Device.NamedUser) == 0 {
+			return "Device specified but no IDs"
+		}
+	}
+	switch ev.Type {
 	case events.TypePush:
-		push, err := ev.Push()
+		push, err := ev.PushBody()
 		if err != nil {
 			return err.Error()
 		}
@@ -126,8 +135,11 @@ func checkEvent(ft events.Type, ev *events.Event) (errmsg string) {
 		if err != nil {
 			return err.Error()
 		}
-		if open.LastDelivered == "" {
-			return "Empty last delivered"
+		if open.LastReceived != nil && open.LastReceived.PushID == "" {
+			return "Empty last received push ID"
+		}
+		if open.ConvertingPush != nil && open.ConvertingPush.PushID == "" {
+			return "Empty converting push ID"
 		}
 	case events.TypeSend:
 		send, err := ev.Send()
@@ -176,7 +188,7 @@ func checkEvent(ft events.Type, ev *events.Event) (errmsg string) {
 	case events.TypeCustom, events.TypeFirst, events.TypeUninstall:
 		// Nothing to do for these events
 	default:
-		return "Unsupported type: " + string(ft)
+		return "Unsupported type: " + string(ev.Type)
 	}
 	return ""
 }

@@ -13,6 +13,8 @@ const (
 	DeviceAmazon  DeviceType = "amazon"
 	DeviceAndroid DeviceType = "android"
 	DeviceIOS     DeviceType = "ios"
+	DeviceUser    DeviceType = "named_user"
+	deviceUnknown DeviceType = "unknown"
 )
 
 type Filter struct {

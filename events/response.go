@@ -19,7 +19,7 @@ var WrongType = errors.New("wrong type for event")
 type Type string
 
 const (
-	TypePush      Type = "PUSH"
+	TypePush      Type = "PUSH_BODY"
 	TypeOpen      Type = "OPEN"
 	TypeSend      Type = "SEND"
 	TypeClose     Type = "CLOSE"
@@ -37,12 +37,12 @@ type Event struct {
 	Processed time.Time       `json:"processed"`
 	Offset    uint64          `json:"offset,string"`
 	Body      json.RawMessage `json:"body"`
-	Devices   struct {
+	Device    *struct {
 		Amazon    string `json:"amazon_channel"`
 		Android   string `json:"android_channel"`
 		IOS       string `json:"ios_channel"`
 		NamedUser string `json:"named_user_id"`
-	} `json:"devices"`
+	} `json:"device,omitempty"`
 }
 
 type Push struct {
@@ -53,16 +53,20 @@ type Push struct {
 	// GroupID is an optional identifier of the group this push is associated
 	// with; group IDs are created by both automation and push to local time.
 	GroupID string `json:"group_id"`
+}
+
+type PushBody struct {
+	Push
 
 	// Payload is the specification of the push as sent via the API.
 	Payload []byte `json:"payload"`
 }
 
-func (e *Event) Push() (*Push, error) {
+func (e *Event) PushBody() (*PushBody, error) {
 	if e.Type != TypePush {
 		return nil, WrongType
 	}
-	p := Push{}
+	p := PushBody{}
 	if err := json.Unmarshal(e.Body, &p); err != nil {
 		return nil, err
 	}
@@ -70,18 +74,24 @@ func (e *Event) Push() (*Push, error) {
 }
 
 type Open struct {
-	// LastDelivered is the push ID of the last notification Urban Airship
-	// attempted delivered to this device.
-	LastDelivered string `json:"last_delivered"`
+	// LastReceived contains the push identifier of the last notification Urban
+	// Airship attempted to deliver to this device, if known. It may also include
+	// a group identifier if the push was scheduled to the device’s local time or
+	// if the push was an automation rule.
+	//
+	//TODO sync with post-2015-05-27 docs
+	LastReceived *Push `json:"last_push_received,omitempty"`
 
-	// SessionID is an identifier for the "session" of user activity. This can be
-	// missing for some kinds of background activity.
+	// ConvertingPush is present if the event was associated with a push. An
+	// object containing the push ID of that notification. It may also include a
+	// group ID if the push was a push to local time or automation rule.
+	//
+	//TODO sync with post-2015-05-27 docs
+	ConvertingPush *Push `json:"converting_push,omitempty"`
+
+	// SessionID is an identifier for the "session" of user activity. This key
+	// will be absent if the application was initialized while backgrounded.
 	SessionID string `json:"session_id"`
-
-	// ConvertingPush is marked as TBD in the spec. If the user opened the app
-	// based on interacting with a push notification, this entry will include the
-	// push ID.
-	ConvertingPush string `json:"converting_push"`
 }
 
 func (e *Event) Open() (*Open, error) {
