@@ -69,7 +69,8 @@ func (c *Client) Post(url string, body interface{}) (*http.Response, error) {
 	// is non-standard and therefore handled by this wrapper method instead of by
 	// Go's http.Client. Give up after 10 redirects.
 	try := 0
-	for ; resp.StatusCode == http.StatusTemporaryRedirect && try < 10; try++ {
+	const tries = 10
+	for ; resp.StatusCode == http.StatusTemporaryRedirect && try < tries; try++ {
 		// Cleanup body of redirect response so the connection will be reused
 		ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
@@ -98,7 +99,7 @@ func (c *Client) Post(url string, body interface{}) (*http.Response, error) {
 			return nil, err
 		}
 	}
-	if try == 10 {
+	if try == tries {
 		// Exhausted retries; cleanup response and return an error
 		ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
@@ -115,7 +116,7 @@ func (c *Client) newRequest(method, url string, buf []byte) (*http.Request, erro
 		return nil, err
 	}
 	req.SetBasicAuth(c.key, c.secret)
-	req.Header.Set("Accept", "application/vnd.urbanairship+json; version=3;")
+	req.Header.Set("Accept", "application/vnd.urbanairship+x-json,application/vnd.urbanairship+x-ndjson;version=3;")
 	if len(buf) > 0 {
 		req.Body = ioutil.NopCloser(bytes.NewReader(buf))
 		req.Header.Set("Content-Type", "application/json")

@@ -1,6 +1,9 @@
 package gobyairship_test
 
 import (
+	"compress/gzip"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -91,5 +94,63 @@ func TestTooManyRedirects(t *testing.T) {
 		if err != ErrTooManyRedirects {
 			t.Fatalf("Expected TooManyRedirects error, but found err==%v", err)
 		}
+	}
+}
+
+// TestGzip ensures the client accepts gzip encoded responses.
+func TestGzip(t *testing.T) {
+	var sz int64 = 10 * 1000 * 1000
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept-Encoding") != "gzip" {
+			t.Logf("'Accept-Encoding: gzip' header not sent: %q", r.Header.Get("Accept-Encoding"))
+			w.WriteHeader(500)
+			return
+		}
+		if r.Header.Get("Authorization") == "" {
+			t.Log("Missing Authorization header")
+			w.WriteHeader(500)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.urbanairship+x‐ndjson;version=3;")
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("UA-Operation-Id", "test-id")
+		w.WriteHeader(200)
+		gzw := gzip.NewWriter(w)
+		val := []byte("1234567890")
+		for i := int64(0); i < sz; i += 10 {
+			if n, err := gzw.Write(val); n != 10 {
+				t.Logf("Wrote %d bytes; expected to write %d. Error: %v", n, sz, err)
+				return
+			}
+		}
+		if err := gzw.Close(); err != nil {
+			t.Logf("Error closing gzip writer: %v", err)
+		}
+	}))
+	defer ts.Close()
+
+	c := NewClient("", "")
+	c.BaseURL = ts.URL
+
+	resp, err := c.Post("", nil)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("Non-200 status code: %d", resp.StatusCode)
+	}
+
+	// Cannot assert Content-Encoding == gzip because Go's http library handles
+	// ungzipping the response and strips the header to avoid clients
+	// double-ungzipping.
+
+	if len(resp.TransferEncoding) == 0 || resp.TransferEncoding[0] != "chunked" {
+		t.Fatalf("Expected chunk transfer encoding, found: %v", resp.TransferEncoding)
+	}
+
+	n, err := io.CopyN(ioutil.Discard, resp.Body, sz)
+	if n != sz {
+		t.Fatalf("Read %d bytes; expected to read %d. Error: %v", n, sz, err)
 	}
 }
