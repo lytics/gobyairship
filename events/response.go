@@ -10,25 +10,10 @@ import (
 	"time"
 )
 
-// WrongType is returned by per-Type methods on Event if method called doesn't
-// match the Event's type.
-var WrongType = errors.New("wrong type for event")
-
-// Type of Event. Events contain per-Type methods to properly decode the Event
-// body into a the desired Type.
-type Type string
-
-const (
-	TypePush      Type = "PUSH_BODY"
-	TypeOpen      Type = "OPEN"
-	TypeSend      Type = "SEND"
-	TypeClose     Type = "CLOSE"
-	TypeTagChange Type = "TAG_CHANGE"
-	TypeUninstall Type = "UNINSTALL"
-	TypeFirst     Type = "FIRST_OPEN"
-	TypeCustom    Type = "CUSTOM"
-	TypeLocation  Type = "LOCATION"
-)
+// LimitExceeded is returned when the number of simultaneous connections to
+// Urban Airship's Event API is exceeded. The API responds with a 402 Payment
+// Required status which is translated into this error.
+var LimitExceeded = errors.New("request was rate limited")
 
 type Event struct {
 	ID        string          `json:"id"`
@@ -94,6 +79,8 @@ type Open struct {
 	SessionID string `json:"session_id"`
 }
 
+// Open returns an Open struct for OPEN events. Non-OPEN events will return
+// the WrongType error.
 func (e *Event) Open() (*Open, error) {
 	if e.Type != TypeOpen {
 		return nil, WrongType
@@ -112,6 +99,8 @@ type Send struct {
 	PushID string `json:"push_id"`
 }
 
+// Send returns a Send struct for SEND events. Non-SEND events will return the
+// WrongType error.
 func (e *Event) Send() (*Send, error) {
 	if e.Type != TypeSend {
 		return nil, WrongType
@@ -190,6 +179,7 @@ func (e *Event) Location() (*Location, error) {
 	return &loc, nil
 }
 
+// Response streams Events from a Fetch call.
 type Response struct {
 	out  chan *Event
 	body io.ReadCloser
@@ -200,9 +190,11 @@ type Response struct {
 }
 
 func newResponse(resp *http.Response) (*Response, error) {
+	if resp.StatusCode == 402 {
+		return nil, LimitExceeded
+	}
 	if resp.StatusCode != 200 {
-		//TODO Prettier error var?
-		return nil, fmt.Errorf("non-200 response: %d", resp.StatusCode)
+		return nil, fmt.Errorf("unexpected non-200 response: %d", resp.StatusCode)
 	}
 	r := &Response{
 		out:  make(chan *Event, 10), // provide some buffering
@@ -230,7 +222,9 @@ func newResponse(resp *http.Response) (*Response, error) {
 	return r, nil
 }
 
-// Events returns a chan that emits Events until closed.
+// Events returns a chan that emits Events until closed. Events is safe for
+// concurrent calls and shares an underlying chan. This means events are not
+// duplicated between multiple receivers.
 func (r *Response) Events() <-chan *Event { return r.out }
 
 // Close the events stream. Safe to call concurrently.
