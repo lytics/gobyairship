@@ -16,18 +16,24 @@ import (
 var LimitExceeded = errors.New("request was rate limited")
 
 type Event struct {
-	ID        string          `json:"id"`
-	Type      Type            `json:"type"`
-	Occurred  time.Time       `json:"occurred"`
-	Processed time.Time       `json:"processed"`
-	Offset    uint64          `json:"offset,string"`
-	Body      json.RawMessage `json:"body"`
-	Device    *struct {
-		Amazon    string `json:"amazon_channel"`
-		Android   string `json:"android_channel"`
-		IOS       string `json:"ios_channel"`
-		NamedUser string `json:"named_user_id"`
-	} `json:"device,omitempty"`
+	// ID uniquely identifies the event.
+	ID       string    `json:"id"`
+	Type     Type      `json:"type"`
+	Occurred time.Time `json:"occurred"`
+
+	// Processed is when the event was ingested by Urban Airship. There may be
+	// lag between when the event occurred, and when it was processed.
+	Processed time.Time `json:"processed"`
+
+	// Offset is the event's location in the stream. Used to resume the stream
+	// after severing a connection. Clients should store this value for the case
+	// that the connection is severed.
+	Offset uint64 `json:"offset,string"`
+
+	// Body is the raw event body. Use the Type specific methods to unmarshal the
+	// body.
+	Body   json.RawMessage `json:"body"`
+	Device *Device         `json:"device,omitempty"`
 }
 
 type Push struct {
@@ -96,7 +102,11 @@ func (e *Event) Open() (*Open, error) {
 // of a push. device will be present in the event to specify which channel
 // received the push.
 type Send struct {
-	PushID string `json:"push_id"`
+	Push
+
+	// VariantID is only present if the notification was sent as part of an
+	// experiment.  Identifies the payload ultimately sent to a device.
+	VariantID string `json:"variant_id,omitempty"`
 }
 
 // Send returns a Send struct for SEND events. Non-SEND events will return the
@@ -181,6 +191,9 @@ func (e *Event) Location() (*Location, error) {
 
 // Response streams Events from a Fetch call.
 type Response struct {
+	// ID is the UA-Operation-Id header from Urban Airship's response.
+	ID string
+
 	out  chan *Event
 	body io.ReadCloser
 
@@ -189,7 +202,10 @@ type Response struct {
 	err    error
 }
 
-func newResponse(resp *http.Response) (*Response, error) {
+// NewResponse creates an events iterator from an http.Response. Fetch is a
+// shortcut for creating a Response, but users can manually create a Response
+// from a custom HTTP request with this function.
+func NewResponse(resp *http.Response) (*Response, error) {
 	if resp.StatusCode == 402 {
 		return nil, LimitExceeded
 	}
@@ -197,6 +213,7 @@ func newResponse(resp *http.Response) (*Response, error) {
 		return nil, fmt.Errorf("unexpected non-200 response: %d", resp.StatusCode)
 	}
 	r := &Response{
+		ID:   resp.Header.Get("UA-Operation-Id"),
 		out:  make(chan *Event, 10), // provide some buffering
 		body: resp.Body,
 		mu:   new(sync.Mutex),

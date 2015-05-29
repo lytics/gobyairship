@@ -21,3 +21,10 @@ const (
 	TypeCustom    Type = "CUSTOM"
 	TypeLocation  Type = "LOCATION"
 )
+
+type Device struct {
+	Amazon    string `json:"amazon_channel"`
+	Android   string `json:"android_channel"`
+	IOS       string `json:"ios_channel"`
+	NamedUser string `json:"named_user_id"`
+}

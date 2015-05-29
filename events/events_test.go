@@ -72,14 +72,16 @@ func TestFilterTypes(t *testing.T) {
 		fc := &fakeClient{filter: ftype, data: f}
 
 		offset := uint64(0)
-		resp, err := events.Fetch(fc, events.StartFirst, offset, []*events.Filter{{Types: []events.Type{ftype}}})
+		resp, err := events.FetchStart(fc, &events.Filter{Types: []events.Type{ftype}})
 		if err != nil {
 			t.Errorf("Received error fetching %s: %v", fname, err)
 			continue
 		}
 
 		// Check all events
+		i := 0
 		for ev := range resp.Events() {
+			i++
 			if ev.Offset < offset {
 				t.Error("%s - Expected offset to monotonically increase: %d < %d", fname, ev.Offset, offset)
 				continue
@@ -91,6 +93,9 @@ func TestFilterTypes(t *testing.T) {
 		}
 		if resp.Err() != io.EOF {
 			t.Errorf("Received error iterating over events for %s: %v", fname, err)
+		}
+		if i == 0 {
+			t.Errorf("No events processed for %s", fname)
 		}
 	}
 }
