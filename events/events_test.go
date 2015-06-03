@@ -1,6 +1,7 @@
 package events_test
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -72,7 +73,7 @@ func TestFilterTypes(t *testing.T) {
 		fc := &fakeClient{filter: ftype, data: f}
 
 		offset := uint64(0)
-		resp, err := events.FetchStart(fc, &events.Filter{Types: []events.Type{ftype}})
+		resp, err := events.Fetch(fc, events.StartOffset, 0, nil, &events.Filter{Types: []events.Type{ftype}})
 		if err != nil {
 			t.Errorf("Received error fetching %s: %v", fname, err)
 			continue
@@ -196,4 +197,51 @@ func checkEvent(ft events.Type, ev *events.Event) (errmsg string) {
 		return "Unsupported type: " + string(ev.Type)
 	}
 	return ""
+}
+
+var failClientErr = errors.New("failClient always fails")
+
+type failClient struct{}
+
+func (failClient) Post(string, interface{}) (*http.Response, error) { return nil, failClientErr }
+
+func TestRequestValidate(t *testing.T) {
+	t.Parallel()
+	c := failClient{}
+
+	// Fetch should only set the offset if the start is StartOffset
+	_, err := events.Fetch(c, events.StartFirst, 0, nil, nil)
+	if err != failClientErr {
+		t.Errorf("unexpected error when setting both start and offset: %v %T %p %p", err, err)
+	}
+
+	_, err = events.Fetch(c, "invalid", 0, nil, nil)
+	if err == nil || err == failClientErr {
+		t.Errorf("expected error when setting invalid start value")
+	}
+
+	_, err = events.Fetch(c, events.StartLast, 0, &events.Subset{})
+	if err == nil || err == failClientErr {
+		t.Errorf("expected error with empty (non-nil) subset")
+	}
+
+	_, err = events.Fetch(c, events.StartLast, 0, &events.Subset{Type: "invalid"})
+	if err == nil || err == failClientErr {
+		t.Errorf("expected error with invalid subset type")
+	}
+
+	_, err = events.Fetch(c, events.StartLast, 0, events.SubsetPartition(-1, 99))
+	if err == nil || err == failClientErr {
+		t.Errorf("expected error with invalid subset partition count")
+	}
+
+	_, err = events.Fetch(c, events.StartLast, 0, events.SubsetPartition(10, 99))
+	if err == nil || err == failClientErr {
+		t.Errorf("expected error with invalid subset partition selection")
+	}
+
+	_, err = events.Fetch(c, events.StartLast, 0, events.SubsetSample(99))
+	if err == nil || err == failClientErr {
+		t.Errorf("expected error with invalid subset sample")
+	}
 }

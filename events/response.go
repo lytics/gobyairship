@@ -15,6 +15,9 @@ import (
 // Required status which is translated into this error.
 var LimitExceeded = errors.New("request was rate limited")
 
+// Event is the envelope for a single even from Urban Airship's event stream.
+// Users should inspect the Event's Type and call the corresponding method to
+// receive a typed event body.
 type Event struct {
 	// ID uniquely identifies the event.
 	ID       string    `json:"id"`

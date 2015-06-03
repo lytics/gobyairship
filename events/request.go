@@ -18,6 +18,9 @@ type Start string
 const (
 	StartFirst Start = "EARLIEST"
 	StartLast  Start = "LATEST"
+
+	// Start from a specific offset
+	StartOffset Start = ""
 )
 
 // DeviceType can be specified in a Filter to receive events for specific types
@@ -109,7 +112,7 @@ type Request struct {
 	// Start is one of “EARLIEST” or “LATEST”. Specifies that the stream should
 	// start at the beginning or the end of the application’s data window. Only
 	// specify one of Offset and Start.
-	Start *Start `json:"start,omitempty"`
+	Start Start `json:"start,omitempty"`
 
 	// Offset specifies where to start streaming. Each Event specifies its offset
 	// which can be used in subsequent requests to resume from where the previous
@@ -128,8 +131,11 @@ type Request struct {
 // Validate returns nil if the request is valid or an error if there's an
 // issue.
 func (r *Request) Validate() error {
-	if r.Start != nil && r.Offset != nil {
-		return fmt.Errorf("only specify one of Start or Offset: start=%s offset=%d", *r.Start, *r.Offset)
+	if r.Start != StartOffset && r.Offset != nil {
+		return fmt.Errorf("only specify one of Start or Offset: start=%s offset=%d", r.Start, *r.Offset)
+	}
+	if r.Start != StartOffset && r.Start != StartFirst && r.Start != StartLast {
+		return fmt.Errorf("start must be one of %q, %q, or %q", StartFirst, StartLast, StartOffset)
 	}
 	if err := r.Subset.Validate(); err != nil {
 		return err
@@ -137,33 +143,13 @@ func (r *Request) Validate() error {
 	return nil
 }
 
-// FetchStart gets events from the beginning using Client. Filters may be nil
-// to fetch all events. If error is non-nil Response will stream events until
-// Close is called.
-func FetchStart(c Client, filters ...*Filter) (*Response, error) {
-	s := StartFirst
-	return Fetch(c, &s, nil, filters)
-}
-
-// FetchLatest gets the latest events using Client. Filters may be nil to
-// fetch all events. If error is non-nil Response will stream events until
-// Close is called.
-func FetchLatest(c Client, filters ...*Filter) (*Response, error) {
-	s := StartLast
-	return Fetch(c, &s, nil, filters)
-}
-
-// FetchOffset gets events since an offset using Client. Filters may be nil to
-// fetch all events. If error is non-nil Response will stream events until
-// Close is called.
-func FetchOffset(c Client, offset uint64, filters ...*Filter) (*Response, error) {
-	return Fetch(c, nil, &offset, filters)
-}
-
 // Fetch events using Client. Filters may be nil to fetch all events. If error
 // is non-nil Response will stream events until Close is called.
-func Fetch(c Client, s *Start, o *uint64, filters []*Filter) (*Response, error) {
-	req := &Request{Start: s, Offset: o, Filters: filters}
+func Fetch(c Client, st Start, offset uint64, su *Subset, filters ...*Filter) (*Response, error) {
+	req := &Request{Start: st, Subset: su, Filters: filters}
+	if st == StartOffset {
+		req.Offset = &offset
+	}
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
