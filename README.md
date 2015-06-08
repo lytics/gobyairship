@@ -1,4 +1,4 @@
-# gobyairship
+# Go By Airship
 
 [![GoDoc](https://godoc.org/github.com/lytics/gobyairship?status.svg)](https://godoc.org/github.com/lytics/gobyairship)
 [![Build Status](https://travis-ci.org/lytics/gobyairship.svg?branch=master)](https://travis-ci.org/lytics/gobyairship)
