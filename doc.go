@@ -12,8 +12,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-// This package streams events from Urban Airship's Event API using a
-// gobyairship.Client.
+// This package provides a client for interacting with the Urban Airship API.
+// Specific API support can be found in subpackages.
 //
-// See https://godoc.org/github.com/lytics/gobyairship#NewClient
-package events
+// UA API http://docs.urbanairship.com/api/ua.html
+package gobyairship
