@@ -260,8 +260,9 @@ func (r *Response) Close() {
 	}
 }
 
-// Err which caused the event stream to end or nil. May be checked when the
-// chan returned by Events() is closed. Safe for concurrent access.
+// Err returns the error which caused the event stream to end or nil. May be
+// checked when the chan returned by Events() is closed. Safe for concurrent
+// access.
 func (r *Response) Err() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

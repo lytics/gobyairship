@@ -19,7 +19,7 @@ const (
 	StartFirst Start = "EARLIEST"
 	StartLast  Start = "LATEST"
 
-	// Start from a specific offset
+	// Start from a specific offset (Offset must be specified in Fetch).
 	StartOffset Start = ""
 )
 
@@ -143,8 +143,8 @@ func (r *Request) Validate() error {
 	return nil
 }
 
-// Fetch events using Client. Filters may be nil to fetch all events. If error
-// is non-nil Response will stream events until Close is called.
+// Fetch events using a Client. Filters may be nil to fetch all events. If
+// error is non-nil Response will stream events until Close is called.
 func Fetch(c Client, st Start, offset uint64, su *Subset, filters ...*Filter) (*Response, error) {
 	req := &Request{Start: st, Subset: su, Filters: filters}
 	if st == StartOffset {
