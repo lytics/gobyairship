@@ -216,10 +216,11 @@ func NewResponse(resp *http.Response) (*Response, error) {
 		return nil, fmt.Errorf("unexpected non-200 response: %d", resp.StatusCode)
 	}
 	r := &Response{
-		ID:   resp.Header.Get("UA-Operation-Id"),
-		out:  make(chan *Event, 10), // provide some buffering
-		body: resp.Body,
-		mu:   new(sync.Mutex),
+		ID:     resp.Header.Get("UA-Operation-Id"),
+		out:    make(chan *Event, 10), // provide some buffering
+		body:   resp.Body,
+		mu:     new(sync.Mutex),
+		closed: make(chan struct{}),
 	}
 	go func() {
 		dec := json.NewDecoder(r.body)
