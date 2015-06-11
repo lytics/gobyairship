@@ -267,5 +267,9 @@ func TestClose(t *testing.T) {
 		close(done)
 	}()
 	resp.Close()
-	<-done
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Error("Close didn't finish soon enough.")
+	}
 }
