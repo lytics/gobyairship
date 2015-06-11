@@ -1,9 +1,11 @@
 package events_test
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
@@ -28,6 +30,15 @@ func init() {
 type fakeClient struct {
 	filter events.Type
 	data   io.ReadCloser
+}
+
+func newFakeClient(t *testing.T, fname string, ftype events.Type) *fakeClient {
+	fn := fmt.Sprintf("%s/%s.json", os.ExpandEnv(testDataPath), fname)
+	raw, err := ioutil.ReadFile(fn)
+	if err != nil {
+		t.Fatalf("Error reading filter file %q: %v", fn, err)
+	}
+	return &fakeClient{filter: ftype, data: ioutil.NopCloser(bytes.NewReader(raw))}
 }
 
 func (c *fakeClient) Post(url string, body interface{}) (*http.Response, error) {
@@ -65,12 +76,7 @@ func TestFilterTypes(t *testing.T) {
 	t.Parallel()
 	for fname, ftype := range filterTypes {
 		t.Log("Testing", fname)
-		fn := fmt.Sprintf("%s/%s.json", os.ExpandEnv(testDataPath), fname)
-		f, err := os.Open(fn)
-		if err != nil {
-			t.Fatalf("Error opening filter file %q: %v", fn, err)
-		}
-		fc := &fakeClient{filter: ftype, data: f}
+		fc := newFakeClient(t, fname, ftype)
 
 		offset := uint64(0)
 		resp, err := events.Fetch(fc, events.StartOffset, 0, nil, &events.Filter{Types: []events.Type{ftype}})
@@ -243,5 +249,27 @@ func TestRequestValidate(t *testing.T) {
 	_, err = events.Fetch(c, events.StartLast, 0, events.SubsetSample(99))
 	if err == nil || err == failClientErr {
 		t.Errorf("expected error with invalid subset sample")
+	}
+}
+
+func TestClose(t *testing.T) {
+	t.Parallel()
+	fc := newFakeClient(t, "all", "")
+	resp, err := events.Fetch(fc, events.StartFirst, 0, nil, &events.Filter{Types: []events.Type{""}})
+	if err != nil {
+		t.Fatalf("Received error fetching: %v", err)
+	}
+
+	// Close should be safe to call all the time
+	done := make(chan bool)
+	go func() {
+		resp.Close()
+		close(done)
+	}()
+	resp.Close()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Error("Close didn't finish soon enough.")
 	}
 }
