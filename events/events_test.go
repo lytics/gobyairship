@@ -1,9 +1,11 @@
 package events_test
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
@@ -32,11 +34,11 @@ type fakeClient struct {
 
 func newFakeClient(t *testing.T, fname string, ftype events.Type) *fakeClient {
 	fn := fmt.Sprintf("%s/%s.json", os.ExpandEnv(testDataPath), fname)
-	f, err := os.Open(fn)
+	raw, err := ioutil.ReadFile(fn)
 	if err != nil {
-		t.Fatalf("Error opening filter file %q: %v", fn, err)
+		t.Fatalf("Error reading filter file %q: %v", fn, err)
 	}
-	return &fakeClient{filter: ftype, data: f}
+	return &fakeClient{filter: ftype, data: ioutil.NopCloser(bytes.NewReader(raw))}
 }
 
 func (c *fakeClient) Post(url string, body interface{}) (*http.Response, error) {
