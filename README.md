@@ -17,4 +17,7 @@ If you have Go 1.3 or later installed you can run tests with:
 go get github.com/lytics/gobyairship
 cd $GOPATH/src/github.com/lytics/gobyairship
 go test ./...
+
+# To run live API integration tests
+UA_CREDS=<app key>:<master secret> go test ./...
 ```
