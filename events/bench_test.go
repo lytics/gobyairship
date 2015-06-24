@@ -14,7 +14,7 @@ type memClient struct {
 	body io.ReadCloser
 }
 
-func (c *memClient) Post(url string, body interface{}) (*http.Response, error) {
+func (c *memClient) Post(url string, body interface{}, extra http.Header) (*http.Response, error) {
 	return &http.Response{
 		StatusCode: 200,
 		Body:       c.body,

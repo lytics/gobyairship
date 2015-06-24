@@ -49,7 +49,7 @@ func TestPostRedirectCookie(t *testing.T) {
 	url := ts.URL + "/events"
 
 	c := NewClient("", "")
-	resp, err := c.Post(url, nil)
+	resp, err := c.Post(url, nil, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error POSTing to test server: %v", err)
 	}
@@ -66,7 +66,6 @@ func TestTooManyRedirects(t *testing.T) {
 
 	hits := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Logf("%d == %s", hits, r.Header.Get("Cookie"))
 		if hits != 0 {
 			if cval, err := strconv.Atoi(r.Header.Get("Cookie")); err != nil || cval != hits {
 				t.Logf("Error retrieving cookie %d after redirect: %v", cval, err)
@@ -87,7 +86,7 @@ func TestTooManyRedirects(t *testing.T) {
 	// Test with and without a request body
 	for _, body := range [][]byte{nil, []byte("{}")} {
 		hits = 0
-		resp, err := c.Post(url, body)
+		resp, err := c.Post(url, body, nil)
 		if resp != nil {
 			t.Fatalf("Expected response to be nil; status code=%d", resp.StatusCode)
 		}
@@ -131,7 +130,7 @@ func TestGzip(t *testing.T) {
 	url := ts.URL + "/events"
 
 	c := NewClient("", "")
-	resp, err := c.Post(url, nil)
+	resp, err := c.Post(url, nil, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
