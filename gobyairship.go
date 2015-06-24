@@ -6,20 +6,13 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
-	"strings"
 )
-
-const DefaultBaseURL = "https://api.urbanairship.com/api"
 
 var ErrTooManyRedirects = errors.New("too many redirects")
 
 // Client is an Urban Airship API client. It handles authentication and
 // provides helpers for making requests against the API.
 type Client struct {
-	// BaseURL is the base location of the Urban Airship API and defaults to
-	// DefaultBaseURL.
-	BaseURL string
-
 	// HTTPClient is the *http.Client to use when making requests. It defaults to
 	// http.DefaultClient.
 	HTTPClient *http.Client
@@ -32,7 +25,6 @@ type Client struct {
 // Master Secret.
 func NewClient(key, secret string) *Client {
 	return &Client{
-		BaseURL:    DefaultBaseURL,
 		HTTPClient: http.DefaultClient,
 		key:        key,
 		secret:     secret,
@@ -42,9 +34,6 @@ func NewClient(key, secret string) *Client {
 // Post a request to the Urban Airship API with the Client's credentials. If
 // body is non-nil it is marshaled to JSON and the appropriate headers are set.
 func (c *Client) Post(url string, body interface{}) (*http.Response, error) {
-	// Construct full URL
-	fullURL := c.BaseURL + "/" + url + "/"
-
 	// Marshal body if it is non-nil
 	var buf []byte
 	if body != nil {
@@ -55,7 +44,7 @@ func (c *Client) Post(url string, body interface{}) (*http.Response, error) {
 		}
 	}
 
-	req, err := c.newRequest("POST", fullURL, buf)
+	req, err := c.newRequest("POST", url, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -76,21 +65,21 @@ func (c *Client) Post(url string, body interface{}) (*http.Response, error) {
 		resp.Body.Close()
 
 		// POST to specified location (if one specified)
-		loc := resp.Header.Get("Location")
-		if loc == "" {
-			// No Location returned, reuse original
-			loc = fullURL
-		} else if !strings.HasPrefix(loc, "http") {
-			// Relative URL
-			loc = c.BaseURL + loc
+		loc, err := resp.Location()
+		if err != nil && err != http.ErrNoLocation {
+			return nil, err
+		}
+		if err == nil {
+			// only set url if err != NoLocation
+			url = loc.String()
 		}
 
-		req, err := c.newRequest("POST", loc, buf)
+		req, err := c.newRequest("POST", url, buf)
 		if err != nil {
 			return nil, err
 		}
 
-		// Set the "cookie" token if it's sent
+		// Set the cookie token if it's sent
 		if cookie := resp.Header.Get("Set-Cookie"); cookie != "" {
 			req.Header.Add("Cookie", cookie)
 		}

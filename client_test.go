@@ -46,10 +46,10 @@ func TestPostRedirectCookie(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
+	url := ts.URL + "/events"
 
 	c := NewClient("", "")
-	c.BaseURL = ts.URL
-	resp, err := c.Post("events", nil)
+	resp, err := c.Post(url, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error POSTing to test server: %v", err)
 	}
@@ -80,14 +80,14 @@ func TestTooManyRedirects(t *testing.T) {
 		w.WriteHeader(307)
 	}))
 	defer ts.Close()
+	url := ts.URL + "/events"
 
 	c := NewClient("", "")
-	c.BaseURL = ts.URL
 
 	// Test with and without a request body
 	for _, body := range [][]byte{nil, []byte("{}")} {
 		hits = 0
-		resp, err := c.Post("events", body)
+		resp, err := c.Post(url, body)
 		if resp != nil {
 			t.Fatalf("Expected response to be nil; status code=%d", resp.StatusCode)
 		}
@@ -128,11 +128,10 @@ func TestGzip(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
+	url := ts.URL + "/events"
 
 	c := NewClient("", "")
-	c.BaseURL = ts.URL
-
-	resp, err := c.Post("", nil)
+	resp, err := c.Post(url, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
