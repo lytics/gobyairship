@@ -1,6 +1,7 @@
 package events_test
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -51,7 +52,10 @@ consume:
 				break consume
 			}
 			events++
-			checkEvent(t, ev.Type, ev)
+			if !checkEvent(t, ev.Type, ev) {
+				buf, _ := json.MarshalIndent(ev, "", "    ")
+				t.Logf("Event %s not ok: %s", ev.ID, string(buf))
+			}
 			timer.Reset(maxpause)
 			last = time.Now()
 		case <-timer.C:

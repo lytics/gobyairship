@@ -143,10 +143,7 @@ func checkEvent(t *testing.T, ft events.Type, ev *events.Event) (ok bool) {
 			t.Error(err)
 			return false
 		}
-		if push.PushID == "" {
-			t.Error("Empty push ID")
-			ok = false
-		}
+		// Don't test push.PushID, it's optional
 		if len(push.Payload) == 0 {
 			t.Error("Empty payload")
 			ok = false
@@ -176,15 +173,12 @@ func checkEvent(t *testing.T, ft events.Type, ev *events.Event) (ok bool) {
 			ok = false
 		}
 	case events.TypeClose:
-		closeev, err := ev.Close()
+		_, err := ev.Close()
 		if err != nil {
 			t.Error(err)
 			return false
 		}
-		if closeev.SessionID == "" {
-			t.Error("Empty session ID")
-			ok = false
-		}
+		// SessionID is optional, nothing more to test.
 	case events.TypeTagChange:
 		tagc, err := ev.TagChange()
 		if err != nil {
