@@ -98,6 +98,8 @@ func TestTooManyRedirects(t *testing.T) {
 
 // TestGzip ensures the client accepts gzip encoded responses.
 func TestGzip(t *testing.T) {
+	t.Parallel()
+
 	var sz int64 = 10 * 1000 * 1000
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Accept-Encoding") != "gzip" {
