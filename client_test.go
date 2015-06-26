@@ -46,10 +46,10 @@ func TestPostRedirectCookie(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
+	url := ts.URL + "/events"
 
 	c := NewClient("", "")
-	c.BaseURL = ts.URL
-	resp, err := c.Post("events", nil)
+	resp, err := c.Post(url, nil, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error POSTing to test server: %v", err)
 	}
@@ -66,7 +66,6 @@ func TestTooManyRedirects(t *testing.T) {
 
 	hits := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Logf("%d == %s", hits, r.Header.Get("Cookie"))
 		if hits != 0 {
 			if cval, err := strconv.Atoi(r.Header.Get("Cookie")); err != nil || cval != hits {
 				t.Logf("Error retrieving cookie %d after redirect: %v", cval, err)
@@ -80,14 +79,14 @@ func TestTooManyRedirects(t *testing.T) {
 		w.WriteHeader(307)
 	}))
 	defer ts.Close()
+	url := ts.URL + "/events"
 
 	c := NewClient("", "")
-	c.BaseURL = ts.URL
 
 	// Test with and without a request body
 	for _, body := range [][]byte{nil, []byte("{}")} {
 		hits = 0
-		resp, err := c.Post("events", body)
+		resp, err := c.Post(url, body, nil)
 		if resp != nil {
 			t.Fatalf("Expected response to be nil; status code=%d", resp.StatusCode)
 		}
@@ -99,6 +98,8 @@ func TestTooManyRedirects(t *testing.T) {
 
 // TestGzip ensures the client accepts gzip encoded responses.
 func TestGzip(t *testing.T) {
+	t.Parallel()
+
 	var sz int64 = 10 * 1000 * 1000
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Accept-Encoding") != "gzip" {
@@ -128,11 +129,10 @@ func TestGzip(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
+	url := ts.URL + "/events"
 
 	c := NewClient("", "")
-	c.BaseURL = ts.URL
-
-	resp, err := c.Post("", nil)
+	resp, err := c.Post(url, nil, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

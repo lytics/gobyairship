@@ -6,20 +6,13 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
-	"strings"
 )
-
-const DefaultBaseURL = "https://api.urbanairship.com/api"
 
 var ErrTooManyRedirects = errors.New("too many redirects")
 
 // Client is an Urban Airship API client. It handles authentication and
 // provides helpers for making requests against the API.
 type Client struct {
-	// BaseURL is the base location of the Urban Airship API and defaults to
-	// DefaultBaseURL.
-	BaseURL string
-
 	// HTTPClient is the *http.Client to use when making requests. It defaults to
 	// http.DefaultClient.
 	HTTPClient *http.Client
@@ -32,7 +25,6 @@ type Client struct {
 // Master Secret.
 func NewClient(key, secret string) *Client {
 	return &Client{
-		BaseURL:    DefaultBaseURL,
 		HTTPClient: http.DefaultClient,
 		key:        key,
 		secret:     secret,
@@ -41,10 +33,9 @@ func NewClient(key, secret string) *Client {
 
 // Post a request to the Urban Airship API with the Client's credentials. If
 // body is non-nil it is marshaled to JSON and the appropriate headers are set.
-func (c *Client) Post(url string, body interface{}) (*http.Response, error) {
-	// Construct full URL
-	fullURL := c.BaseURL + "/" + url + "/"
-
+//
+// Extra headers an be added and will override any default values.
+func (c *Client) Post(url string, body interface{}, extra http.Header) (*http.Response, error) {
 	// Marshal body if it is non-nil
 	var buf []byte
 	if body != nil {
@@ -55,9 +46,15 @@ func (c *Client) Post(url string, body interface{}) (*http.Response, error) {
 		}
 	}
 
-	req, err := c.newRequest("POST", fullURL, buf)
+	req, err := c.newRequest("POST", url, buf)
 	if err != nil {
 		return nil, err
+	}
+	if extra != nil {
+		for k, v := range extra {
+			ck := http.CanonicalHeaderKey(k)
+			req.Header[ck] = v
+		}
 	}
 
 	resp, err := c.HTTPClient.Do(req)
@@ -76,21 +73,21 @@ func (c *Client) Post(url string, body interface{}) (*http.Response, error) {
 		resp.Body.Close()
 
 		// POST to specified location (if one specified)
-		loc := resp.Header.Get("Location")
-		if loc == "" {
-			// No Location returned, reuse original
-			loc = fullURL
-		} else if !strings.HasPrefix(loc, "http") {
-			// Relative URL
-			loc = c.BaseURL + loc
+		loc, err := resp.Location()
+		if err != nil && err != http.ErrNoLocation {
+			return nil, err
+		}
+		if err == nil {
+			// only set url if err != NoLocation
+			url = loc.String()
 		}
 
-		req, err := c.newRequest("POST", loc, buf)
+		req, err := c.newRequest("POST", url, buf)
 		if err != nil {
 			return nil, err
 		}
 
-		// Set the "cookie" token if it's sent
+		// Set the cookie token if it's sent
 		if cookie := resp.Header.Get("Set-Cookie"); cookie != "" {
 			req.Header.Add("Cookie", cookie)
 		}
@@ -116,10 +113,12 @@ func (c *Client) newRequest(method, url string, buf []byte) (*http.Request, erro
 		return nil, err
 	}
 	req.SetBasicAuth(c.key, c.secret)
-	req.Header.Set("Accept", "application/vnd.urbanairship+x-json,application/vnd.urbanairship+x-ndjson;version=3;")
 	if len(buf) > 0 {
 		req.Body = ioutil.NopCloser(bytes.NewReader(buf))
 		req.Header.Set("Content-Type", "application/json")
+
+		// Urban Airship APIs do not support chunked requests; set the Content-Length
+		req.ContentLength = int64(len(buf))
 	}
 	return req, nil
 }

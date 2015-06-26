@@ -41,7 +41,7 @@ func newFakeClient(t *testing.T, fname string, ftype events.Type) *fakeClient {
 	return &fakeClient{filter: ftype, data: ioutil.NopCloser(bytes.NewReader(raw))}
 }
 
-func (c *fakeClient) Post(url string, body interface{}) (*http.Response, error) {
+func (c *fakeClient) Post(url string, body interface{}, extra http.Header) (*http.Response, error) {
 	// body should be a Request; validate it
 	req, ok := body.(*events.Request)
 	if !ok {
@@ -94,9 +94,7 @@ func TestFilterTypes(t *testing.T) {
 				continue
 			}
 			offset = ev.Offset
-			if msg := checkEvent(ftype, ev); msg != "" {
-				t.Errorf("%s - %s\n%s", fname, msg, string(ev.Body))
-			}
+			checkEvent(t, ftype, ev)
 		}
 		if resp.Err() != io.EOF {
 			t.Errorf("Received error iterating over events for %s: %v", fname, err)
@@ -107,109 +105,132 @@ func TestFilterTypes(t *testing.T) {
 	}
 }
 
-func checkEvent(ft events.Type, ev *events.Event) (errmsg string) {
-	if ev.ID == "" {
-		return "Missing ID"
+func checkEvent(t *testing.T, ft events.Type, ev *events.Event) (ok bool) {
+	ok = true
+	if len(ev.ID) < 2 {
+		t.Errorf("Invalid/missing ID: %q", ev.ID)
+		ok = false
 	}
 	// ft == "" means ev may be of /any/ type
 	if ft != "" && ev.Type != ft {
-		return fmt.Sprintf("Expected type %s but found %s", ft, ev.Type)
+		t.Errorf("Expected type %s but found %s", ft, ev.Type)
+		ok = false
+		return
 	}
 	if ev.Occurred.IsZero() || ev.Occurred.After(time.Now()) {
-		return fmt.Sprintf("Invalid Occurred timestamp: %s", ev.Occurred)
+		t.Errorf("Invalid Occurred timestamp: %s", ev.Occurred)
+		ok = false
 	}
 	if ev.Processed.IsZero() || ev.Processed.After(time.Now()) {
-		return fmt.Sprintf("Invalid Processed timestamp: %s", ev.Processed)
+		t.Errorf("Invalid Processed timestamp: %s", ev.Processed)
+		ok = false
 	}
 	if ev.Occurred.After(ev.Processed) {
-		return fmt.Sprintf("Occurred after Processed?! %s > %s", ev.Occurred, ev.Processed)
+		t.Errorf("Occurred after Processed?! %s > %s", ev.Occurred, ev.Processed)
+		ok = false
 	}
 
 	if ev.Device != nil {
 		if len(ev.Device.Amazon)+len(ev.Device.Android)+len(ev.Device.IOS)+len(ev.Device.NamedUser) == 0 {
-			return "Device specified but no IDs"
+			t.Error("Device specified but no IDs")
+			ok = false
 		}
 	}
 	switch ev.Type {
 	case events.TypePush:
 		push, err := ev.PushBody()
 		if err != nil {
-			return err.Error()
+			t.Error(err)
+			return false
 		}
-		if push.PushID == "" {
-			return "Empty push ID"
-		}
+		// Don't test push.PushID, it's optional
 		if len(push.Payload) == 0 {
-			return "Empty payload"
+			t.Error("Empty payload")
+			ok = false
 		}
 	case events.TypeOpen:
 		open, err := ev.Open()
 		if err != nil {
-			return err.Error()
+			t.Error(err)
+			return false
 		}
 		if open.LastReceived != nil && open.LastReceived.PushID == "" {
-			return "Empty last received push ID"
+			t.Error("Empty last received push ID")
+			ok = false
 		}
 		if open.ConvertingPush != nil && open.ConvertingPush.PushID == "" {
-			return "Empty converting push ID"
+			t.Error("Empty converting push ID")
+			ok = false
 		}
 	case events.TypeSend:
 		send, err := ev.Send()
 		if err != nil {
-			return err.Error()
+			t.Error(err)
+			return false
 		}
 		if send.PushID == "" {
-			return "Empty push ID"
+			t.Error("Empty push ID")
+			ok = false
 		}
 	case events.TypeClose:
-		closeev, err := ev.Close()
+		_, err := ev.Close()
 		if err != nil {
-			return err.Error()
+			t.Error(err)
+			return false
 		}
-		if closeev.SessionID == "" {
-			return "Empty session ID"
-		}
+		// SessionID is optional, nothing more to test.
 	case events.TypeTagChange:
 		tagc, err := ev.TagChange()
 		if err != nil {
-			return err.Error()
+			t.Error(err)
+			return false
 		}
 		if len(tagc.Add)+len(tagc.Remove) == 0 {
-			return "Tag change without any tag changes"
+			t.Error("Tag change without any tag changes")
+			ok = false
 		}
 		if len(tagc.Remove) == 0 && len(tagc.Current) == 0 {
-			return "No tags yet no removals"
+			t.Error("No tags yet no removals")
+			ok = false
 		}
 	case events.TypeLocation:
 		loc, err := ev.Location()
 		if err != nil {
-			return err.Error()
+			t.Error(err)
+			return false
 		}
 		if loc.Lat == "" {
-			return "No lat"
+			t.Error("No lat")
+			ok = false
 		}
 		if loc.Lon == "" {
-			return "No lon"
+			t.Error("No lon")
+			ok = false
 		}
 		if _, err := loc.Lat.Float64(); err != nil {
-			return "Error getting float form of lat: " + err.Error()
+			t.Errorf("Error getting float form of lat: %v", err)
+			ok = false
 		}
 		if _, err := loc.Lon.Float64(); err != nil {
-			return "Error getting float form of lon: " + err.Error()
+			t.Errorf("Error getting float form of lon: ", err)
+			ok = false
 		}
 	case events.TypeCustom, events.TypeFirst, events.TypeUninstall:
 		// Nothing to do for these events
 	default:
-		return "Unsupported type: " + string(ev.Type)
+		t.Errorf("Unsupported type: %v", ev.Type)
+		return false
 	}
-	return ""
+	return ok
 }
 
 var failClientErr = errors.New("failClient always fails")
 
 type failClient struct{}
 
-func (failClient) Post(string, interface{}) (*http.Response, error) { return nil, failClientErr }
+func (failClient) Post(string, interface{}, http.Header) (*http.Response, error) {
+	return nil, failClientErr
+}
 
 func TestRequestValidate(t *testing.T) {
 	t.Parallel()

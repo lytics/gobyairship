@@ -6,9 +6,24 @@ import (
 	"net/http"
 )
 
+const DefaultEventsURL = "https://stream.urbanairship.com/api/events/"
+
+var evurl = DefaultEventsURL
+
+// SetURL allows overriding the default URL for Urban Airship's Event stream
+// and returns the previous value. Passing an empty string will just return the
+// current value without changing it.
+func SetURL(url string) string {
+	old := evurl
+	if len(url) > 0 {
+		evurl = url
+	}
+	return old
+}
+
 // Client used to fetch events. Usually *gobyairship.Client.
 type Client interface {
-	Post(url string, body interface{}) (*http.Response, error)
+	Post(url string, body interface{}, extra http.Header) (*http.Response, error)
 }
 
 // Start indicates whether to start at the earliest or latest offset. See
@@ -155,8 +170,11 @@ func Fetch(c Client, st Start, offset uint64, su *Subset, filters ...*Filter) (*
 		return nil, err
 	}
 
+	// Override Accept header with ndjson type
+	extra := http.Header{"Accept": []string{"application/vnd.urbanairship+x-ndjson;version=3;"}}
+
 	// Valid request, post to API
-	resp, err := c.Post("events", req)
+	resp, err := c.Post(evurl, req, extra)
 	if err != nil {
 		return nil, err
 	}
