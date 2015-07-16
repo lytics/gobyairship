@@ -185,6 +185,7 @@ func checkEvent(t *testing.T, ft events.Type, ev *events.Event) (ok bool) {
 			t.Error(err)
 			return false
 		}
+		// if no tags are added/removed, make sure we have 'current' tags
 		if len(tagc.Add)+len(tagc.Remove) == 0 {
 			if len(tagc.Current) == 0 {
 				t.Error("Tag change without any tag changes")
