@@ -25,7 +25,17 @@ func TestEventsIntegration(t *testing.T) {
 	events.SetURL(os.Getenv("UA_EVENTS_URL"))
 
 	start := time.Now()
-	resp, err := events.Fetch(client, events.StartFirst, 0, nil)
+
+	var uaImportFilter = events.Filter{
+		Types: []events.Type{
+			events.TypeFirst,
+			events.TypeOpen,
+			events.TypeTagChange,
+			events.TypeUninstall,
+		},
+	}
+
+	resp, err := events.Fetch(client, events.StartFirst, 0, nil, &uaImportFilter)
 	if err != nil {
 		t.Fatalf("Error fetching events from %s: %v", events.SetURL(""), err)
 	}
