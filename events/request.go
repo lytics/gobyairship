@@ -51,7 +51,7 @@ const (
 )
 
 type Filter struct {
-	Types        []Type       `json:"type,omitempty"`
+	Types        []Type       `json:"types,omitempty"`
 	DeviceTypes  []DeviceType `json:"device_types,omitempty"`
 	Notification []Push       `json:"notification,omitempty"`
 	Devices      []Device     `json:"devices,omitempty"`
