@@ -227,11 +227,16 @@ func NewResponse(resp *http.Response) (*Response, error) {
 		for {
 			var ev Event
 			if err := dec.Decode(&ev); err != nil {
-				r.mu.Lock()
-				defer r.mu.Unlock()
-				r.err = err
-				close(r.out)
-				return
+				select {
+				case <-r.closed:
+					return
+				default:
+					r.mu.Lock()
+					defer r.mu.Unlock()
+					r.err = err
+					close(r.out)
+					return
+				}
 			}
 			select {
 			case r.out <- &ev:
