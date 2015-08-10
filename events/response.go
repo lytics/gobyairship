@@ -256,8 +256,8 @@ func (r *Response) Close() {
 	case <-r.closed:
 		return
 	default:
-		r.body.Close()
 		close(r.closed)
+		r.body.Close()
 	}
 }
 
