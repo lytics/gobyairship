@@ -229,6 +229,7 @@ func NewResponse(resp *http.Response) (*Response, error) {
 			if err := dec.Decode(&ev); err != nil {
 				select {
 				case <-r.closed:
+					//TODO Only ignore "closed" errors
 					return
 				default:
 					r.mu.Lock()
