@@ -223,6 +223,8 @@ func NewResponse(resp *http.Response) (*Response, error) {
 		closed: make(chan struct{}),
 	}
 	go func() {
+		// Always close Event chan to indicate to callers that response is done.
+		defer close(r.out)
 		dec := json.NewDecoder(r.body)
 		for {
 			var ev Event
@@ -235,7 +237,6 @@ func NewResponse(resp *http.Response) (*Response, error) {
 					r.mu.Lock()
 					defer r.mu.Unlock()
 					r.err = err
-					close(r.out)
 					return
 				}
 			}
