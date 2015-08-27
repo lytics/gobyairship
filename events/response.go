@@ -223,6 +223,7 @@ func NewResponse(resp *http.Response) (*Response, error) {
 		closed: make(chan struct{}),
 	}
 	go func() {
+		// Always close Event chan to indicate to callers that response is done.
 		defer close(r.out)
 		dec := json.NewDecoder(r.body)
 		for {
