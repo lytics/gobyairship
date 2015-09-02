@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const DefaultEventsURL = "https://stream.urbanairship.com/api/events/"
+const DefaultEventsURL = "https://connect.urbanairship.com/api/events/"
 
 var evurl = DefaultEventsURL
 
