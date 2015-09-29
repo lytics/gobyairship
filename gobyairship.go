@@ -17,7 +17,7 @@ type Client struct {
 	// http.DefaultClient.
 	HTTPClient *http.Client
 
-	app_key    string
+	app_key      string
 	access_token string
 }
 
@@ -25,9 +25,9 @@ type Client struct {
 // Access Token.
 func NewClient(app_key, access_token string) *Client {
 	return &Client{
-		HTTPClient: http.DefaultClient,
-		app_key:        app_key,
-		access_token:     access_token,
+		HTTPClient:   http.DefaultClient,
+		app_key:      app_key,
+		access_token: access_token,
 	}
 }
 
@@ -113,7 +113,7 @@ func (c *Client) newRequest(method, url string, buf []byte) (*http.Request, erro
 		return nil, err
 	}
 	req.Header.Set("X-UA-Appkey", c.app_key)
-	req.Header.Set("Authorization", "Bearer " + c.access_token)
+	req.Header.Set("Authorization", "Bearer "+c.access_token)
 	if len(buf) > 0 {
 		req.Body = ioutil.NopCloser(bytes.NewReader(buf))
 		req.Header.Set("Content-Type", "application/json")
