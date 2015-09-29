@@ -17,17 +17,17 @@ type Client struct {
 	// http.DefaultClient.
 	HTTPClient *http.Client
 
-	key    string
-	secret string
+	app_key    string
+	access_token string
 }
 
 // NewClient creates a new Urban Airship API Client using the given App Key and
-// Master Secret.
-func NewClient(key, secret string) *Client {
+// Access Token.
+func NewClient(app_key, access_token string) *Client {
 	return &Client{
 		HTTPClient: http.DefaultClient,
-		key:        key,
-		secret:     secret,
+		app_key:        app_key,
+		access_token:     access_token,
 	}
 }
 
@@ -105,14 +105,15 @@ func (c *Client) Post(url string, body interface{}, extra http.Header) (*http.Re
 	return resp, nil
 }
 
-// newRequest adds basic auth and accept headers to an Urban Airship API
+// newRequest adds auth and accept headers to an Urban Airship API
 // request. If buf is non-nil it is assumed to be JSON.
 func (c *Client) newRequest(method, url string, buf []byte) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(c.key, c.secret)
+	req.Header.Set("X-UA-Appkey", c.app_key)
+	req.Header.Set("Authorization", "Bearer " + c.access_token)
 	if len(buf) > 0 {
 		req.Body = ioutil.NopCloser(bytes.NewReader(buf))
 		req.Header.Set("Content-Type", "application/json")
