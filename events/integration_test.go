@@ -17,7 +17,7 @@ func TestEventsIntegration(t *testing.T) {
 	}
 	parts := strings.SplitN(os.Getenv("UA_CREDS"), ":", 2)
 	if len(parts) != 2 {
-		t.Skip("Invalid UA_CREDS. Expected <app key>:<master secret>")
+		t.Skip("Invalid UA_CREDS. Expected <app key>:<access token>")
 	}
 	client := gobyairship.NewClient(parts[0], parts[1])
 
