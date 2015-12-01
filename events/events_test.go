@@ -61,15 +61,18 @@ func (c *fakeClient) Post(url string, body interface{}, extra http.Header) (*htt
 
 // filter type test files
 var filterTypes = map[string]events.Type{
-	"all":        "",
-	"close":      events.TypeClose,
-	"first_open": events.TypeFirst,
-	"location":   events.TypeLocation,
-	"open":       events.TypeOpen,
-	"send":       events.TypeSend,
-	"tag_change": events.TypeTagChange,
-	"uninstall":  events.TypeUninstall,
-	"push_body":  events.TypePush,
+	"all":                       "",
+	"close":                     events.TypeClose,
+	"first_open":                events.TypeFirst,
+	"location":                  events.TypeLocation,
+	"open":                      events.TypeOpen,
+	"send":                      events.TypeSend,
+	"tag_change":                events.TypeTagChange,
+	"uninstall":                 events.TypeUninstall,
+	"push_body":                 events.TypePush,
+	"in_app_message_display":    events.TypeInAppMessageDisplay,
+	"in_app_message_expiration": events.TypeInAppMessageExpiration,
+	"in_app_message_resolution": events.TypeInAppMessageResolution,
 }
 
 func TestFilterTypes(t *testing.T) {
@@ -217,6 +220,30 @@ func checkEvent(t *testing.T, ft events.Type, ev *events.Event) (ok bool) {
 		if _, err := loc.Lon.Float64(); err != nil {
 			t.Errorf("Error getting float form of lon: ", err)
 			ok = false
+		}
+	case events.TypeRichDelivery, events.TypeRichRead, events.TypeRichDelete:
+		_, err := ev.RichEvent()
+		if err != nil {
+			t.Error(err)
+			return false
+		}
+	case events.TypeInAppMessageDisplay:
+		_, err := ev.InAppMessageDisplay()
+		if err != nil {
+			t.Error(err)
+			return false
+		}
+	case events.TypeInAppMessageResolution:
+		_, err := ev.InAppMessageResolution()
+		if err != nil {
+			t.Error(err)
+			return false
+		}
+	case events.TypeInAppMessageExpiration:
+		_, err := ev.InAppMessageExpiration()
+		if err != nil {
+			t.Error(err)
+			return false
 		}
 	case events.TypeCustom, events.TypeFirst, events.TypeUninstall:
 		// Nothing to do for these events

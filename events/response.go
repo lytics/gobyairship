@@ -192,6 +192,85 @@ func (e *Event) Location() (*Location, error) {
 	return &loc, nil
 }
 
+type InAppMessageDisplay struct {
+	Push
+
+	// A triggering push is present if the user started the current session by opening
+	// a push notification.
+	TriggeringPush Push `json:"triggering_push"`
+}
+
+func (e *Event) InAppMessageDisplay() (*InAppMessageDisplay, error) {
+	if e.Type != TypeInAppMessageDisplay {
+		return nil, WrongType
+	}
+	disp := InAppMessageDisplay{}
+	if err := json.Unmarshal(e.Body, &disp); err != nil {
+		return nil, err
+	}
+	return &disp, nil
+}
+
+type InAppMessageResolution struct {
+	InAppMessageDisplay
+
+	TimeSent time.Time `json:"time_sent"`
+
+	// Type indicates how the In-app message was resolved, and can take on one
+	// of the following values: BUTTON_CLICK, MESSAGE_CLICK, TIMED_OUT, USER_DISMISSED
+	Type string `json:"type"`
+
+	// Duration is the amount of time for which the message was displayed, in milliseconds.
+	Duration int64 `json:"duration"`
+
+	// Additional optional fields describing the button that was clicked:
+	ButtonID          string `json:"button_id,omitempty"`
+	ButtonGroup       string `json:"button_group,omitempty"`
+	ButtonDescription string `json:"button_description,omitempty"`
+}
+
+func (e *Event) InAppMessageResolution() (*InAppMessageResolution, error) {
+	if e.Type != TypeInAppMessageResolution {
+		return nil, WrongType
+	}
+	res := InAppMessageResolution{}
+	if err := json.Unmarshal(e.Body, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type InAppMessageExpiration struct {
+	InAppMessageResolution
+
+	// ReplacingPush is present if Type is equal to REPLACED. It identifies
+	// the push specification defining the In-App message which should replace the
+	// current message.
+	ReplacingPush Push `json:"replacing_push,omitempty"`
+}
+
+func (e *Event) InAppMessageExpiration() (*InAppMessageExpiration, error) {
+	if e.Type != TypeInAppMessageExpiration {
+		return nil, WrongType
+	}
+	exp := InAppMessageExpiration{}
+	if err := json.Unmarshal(e.Body, &exp); err != nil {
+		return nil, err
+	}
+	return &exp, nil
+}
+
+func (e *Event) RichEvent() (*Push, error) {
+	if e.Type != TypeRichDelete && e.Type != TypeRichDelivery && e.Type != TypeRichRead {
+		return nil, WrongType
+	}
+	p := Push{}
+	if err := json.Unmarshal(e.Body, &p); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
 // Response streams Events from a Fetch call.
 type Response struct {
 	// ID is the UA-Operation-Id header from Urban Airship's response.

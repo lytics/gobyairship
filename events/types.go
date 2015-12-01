@@ -11,15 +11,21 @@ var WrongType = errors.New("wrong type for event")
 type Type string
 
 const (
-	TypePush      Type = "PUSH_BODY"
-	TypeOpen      Type = "OPEN"
-	TypeSend      Type = "SEND"
-	TypeClose     Type = "CLOSE"
-	TypeTagChange Type = "TAG_CHANGE"
-	TypeUninstall Type = "UNINSTALL"
-	TypeFirst     Type = "FIRST_OPEN"
-	TypeCustom    Type = "CUSTOM"
-	TypeLocation  Type = "LOCATION"
+	TypePush                   Type = "PUSH_BODY"
+	TypeOpen                   Type = "OPEN"
+	TypeSend                   Type = "SEND"
+	TypeClose                  Type = "CLOSE"
+	TypeTagChange              Type = "TAG_CHANGE"
+	TypeUninstall              Type = "UNINSTALL"
+	TypeFirst                  Type = "FIRST_OPEN"
+	TypeCustom                 Type = "CUSTOM"
+	TypeLocation               Type = "LOCATION"
+	TypeRichDelivery           Type = "RICH_DELIVERY"
+	TypeRichRead               Type = "RICH_READ"
+	TypeRichDelete             Type = "RICH_DELETE"
+	TypeInAppMessageDisplay    Type = "IN_APP_MESSAGE_DISPLAY"
+	TypeInAppMessageResolution Type = "IN_APP_MESSAGE_RESOLUTION"
+	TypeInAppMessageExpiration Type = "IN_APP_MESSAGE_EXPIRATION"
 )
 
 type Device struct {
