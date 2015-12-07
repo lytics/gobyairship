@@ -157,11 +157,11 @@ func checkEvent(t *testing.T, ft events.Type, ev *events.Event) (ok bool) {
 			t.Error(err)
 			return false
 		}
-		if open.LastReceived != nil && open.LastReceived.PushID == "" {
+		if open.LastDelivered != nil && open.LastDelivered.PushID == "" {
 			t.Error("Empty last received push ID")
 			ok = false
 		}
-		if open.ConvertingPush != nil && open.ConvertingPush.PushID == "" {
+		if open.TriggeringPush != nil && open.TriggeringPush.PushID == "" {
 			t.Error("Empty converting push ID")
 			ok = false
 		}

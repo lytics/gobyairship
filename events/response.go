@@ -68,20 +68,18 @@ func (e *Event) PushBody() (*PushBody, error) {
 }
 
 type Open struct {
-	// LastReceived contains the push identifier of the last notification Urban
+	// LastDelivered contains the push identifier of the last notification Urban
 	// Airship attempted to deliver to this device, if known. It may also include
 	// a group identifier if the push was scheduled to the device’s local time or
 	// if the push was an automation rule.
 	//
-	//TODO sync with post-2015-05-27 docs
-	LastReceived *Push `json:"last_push_received,omitempty"`
+	LastDelivered *Push `json:"last_delivered,omitempty"`
 
-	// ConvertingPush is present if the event was associated with a push. An
+	// Triggering is present if the event was associated with a push. An
 	// object containing the push ID of that notification. It may also include a
 	// group ID if the push was a push to local time or automation rule.
 	//
-	//TODO sync with post-2015-05-27 docs
-	ConvertingPush *Push `json:"converting_push,omitempty"`
+	TriggeringPush *Push `json:"triggering_push,omitempty"`
 
 	// SessionID is an identifier for the "session" of user activity. This key
 	// will be absent if the application was initialized while backgrounded.
