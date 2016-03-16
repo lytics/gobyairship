@@ -104,6 +104,10 @@ func (e *Event) Open() (*Open, error) {
 // received the push.
 type Send struct {
 	Push
+
+	// VariantID is only present if the notification was sent as part of an
+	// experiment.  Identifies the payload ultimately sent to a device.
+	VariantID *int `json:"variant_id,omitempty"`
 }
 
 // Send returns a Send struct for SEND events. Non-SEND events will return the
