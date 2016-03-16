@@ -107,7 +107,7 @@ type Send struct {
 
 	// VariantID is only present if the notification was sent as part of an
 	// experiment.  Identifies the payload ultimately sent to a device.
-	VariantID string `json:"variant_id,omitempty"`
+	VariantID *int `json:"variant_id,omitempty"`
 }
 
 // Send returns a Send struct for SEND events. Non-SEND events will return the
